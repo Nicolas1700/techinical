@@ -1,6 +1,7 @@
 package infrastructura
 
 import (
+	"techinical/sentences"
 	"techinical/video/handlers"
 
 	"github.com/gofiber/fiber/v2"
@@ -8,12 +9,12 @@ import (
 	sharedRepo "techinical/shared/repository"
 )
 
-func SetupRoutes(apiBase fiber.Router, chatGptApi sharedRepo.ChatGptApi) {
+func SetupRoutes(apiBase fiber.Router, chatGptApi sharedRepo.ChatGptApi, sentences sentences.Sentences) {
 
-	handlerGet := handlers.NewHandlerGetVideo()
+	handlerGet := handlers.NewHandlerGetVideo(sentences)
 	handlerPost := handlers.NewHandlerPostVideo(chatGptApi)
 	handlerPatch := handlers.NewHandlerPatchVideo(chatGptApi)
-	handlerDelete := handlers.NewHandlerDeleteVideo()
+	handlerDelete := handlers.NewHandlerDeleteVideo(sentences)
 
 	apiBase.Get("/videos", handlerGet.GetVideo)
 	apiBase.Post("/videos", handlerPost.PostVideo)

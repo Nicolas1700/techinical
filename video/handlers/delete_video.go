@@ -1,17 +1,21 @@
 package handlers
 
 import (
-	"techinical/sentencias"
+	"techinical/sentences"
 	"techinical/video/infrastructura/dto"
 
 	"github.com/gofiber/fiber/v2"
 )
 
 type HandlerDelete struct {
+	sentences sentences.Sentences
 }
 
-func NewHandlerDeleteVideo() HandlerDelete {
-	return HandlerDelete{}
+func NewHandlerDeleteVideo(sentences sentences.Sentences) HandlerDelete {
+	if sentences == nil {
+		panic("El repositorio de sentences es nil")
+	}
+	return HandlerDelete{sentences: sentences}
 }
 
 func (h *HandlerDelete) DeleteVideo(c *fiber.Ctx) error {
@@ -22,5 +26,5 @@ func (h *HandlerDelete) DeleteVideo(c *fiber.Ctx) error {
 			"error": err,
 		})
 	}
-	return sentencias.DeleteRecord(c, "video", "id_video", video.Id_Video, &video)
+	return h.sentences.DeleteRecord(c, "video", "id_video", video.Id_Video, &video)
 }

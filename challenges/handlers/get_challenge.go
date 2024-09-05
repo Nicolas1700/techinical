@@ -3,20 +3,24 @@ package handlers
 import (
 	"techinical/challenges/infrastructura/dto"
 	"techinical/db"
-	"techinical/sentencias"
+	"techinical/sentences"
 
 	"github.com/gofiber/fiber/v2"
 )
 
 type HandlerGet struct {
+	sentences sentences.Sentences
 }
 
-func NewHandlerGetChallenge() HandlerGet {
-	return HandlerGet{}
+func NewHandlerGetChallenge(sentences sentences.Sentences) HandlerGet {
+	if sentences == nil {
+		panic("El repositorio de sentences es nil")
+	}
+	return HandlerGet{sentences: sentences}
 }
 
 func (h *HandlerGet) GetChallenge(c *fiber.Ctx) error {
-	query, err := sentencias.PaginateAndQuery(c, "challenges")
+	query, err := h.sentences.PaginateAndQuery(c, "challenges")
 	if err != nil {
 		return err
 	}

@@ -2,21 +2,25 @@ package handlers
 
 import (
 	"techinical/db"
-	"techinical/sentencias"
+	"techinical/sentences"
 	"techinical/users/infrastructura/dto"
 
 	"github.com/gofiber/fiber/v2"
 )
 
 type HandlerGet struct {
+	sentences sentences.Sentences
 }
 
-func NewHandlerGetUser() HandlerGet {
-	return HandlerGet{}
+func NewHandlerGetUser(sentences sentences.Sentences) HandlerGet {
+	if sentences == nil {
+		panic("El repositorio de sentences es nil")
+	}
+	return HandlerGet{sentences: sentences}
 }
 
 func (h *HandlerGet) GetUser(c *fiber.Ctx) error {
-	query, err := sentencias.PaginateAndQuery(c, "users")
+	query, err := h.sentences.PaginateAndQuery(c, "users")
 	if err != nil {
 		return err
 	}

@@ -2,16 +2,20 @@ package handlers
 
 import (
 	"techinical/challenges/infrastructura/dto"
-	"techinical/sentencias"
+	"techinical/sentences"
 
 	"github.com/gofiber/fiber/v2"
 )
 
 type HandlerDelete struct {
+	sentences sentences.Sentences
 }
 
-func NewHandlerDeleteChallenge() HandlerDelete {
-	return HandlerDelete{}
+func NewHandlerDeleteChallenge(sentences sentences.Sentences) HandlerDelete {
+	if sentences == nil {
+		panic("El repositorio de sentences es nil")
+	}
+	return HandlerDelete{sentences: sentences}
 }
 
 func (h *HandlerDelete) DeleteChallenge(c *fiber.Ctx) error {
@@ -22,5 +26,5 @@ func (h *HandlerDelete) DeleteChallenge(c *fiber.Ctx) error {
 			"error": err,
 		})
 	}
-	return sentencias.DeleteRecord(c, "challenges", "id_challenge", challenge.Id_Challenge, &challenge)
+	return h.sentences.DeleteRecord(c, "challenges", "id_challenge", challenge.Id_Challenge, &challenge)
 }

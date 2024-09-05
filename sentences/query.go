@@ -1,4 +1,4 @@
-package sentencias
+package sentences
 
 import (
 	"fmt"
@@ -8,7 +8,21 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func PaginateAndQuery(c *fiber.Ctx, tableName string) (string, error) {
+type Sentences interface {
+	PaginateAndQuery(c *fiber.Ctx, tableName string) (string, error)
+	DeleteRecord(c *fiber.Ctx, tableName string, idColumn string, idValue string, dest interface{}) error
+}
+
+var _ Sentences = (*sentences)(nil)
+
+type sentences struct {
+}
+
+func NewSentences() Sentences {
+	return &sentences{}
+}
+
+func (s *sentences) PaginateAndQuery(c *fiber.Ctx, tableName string) (string, error) {
 	// Valor por defecto '1'
 	page := c.Query("page", "1")
 	// Valor por defecto '10'
@@ -30,7 +44,7 @@ func PaginateAndQuery(c *fiber.Ctx, tableName string) (string, error) {
 	return `SELECT * FROM ` + tableName + ` LIMIT ` + limit + ` OFFSET ` + offset, nil
 }
 
-func DeleteRecord(c *fiber.Ctx, tableName string, idColumn string, idValue string, dest interface{}) error {
+func (s *sentences) DeleteRecord(c *fiber.Ctx, tableName string, idColumn string, idValue string, dest interface{}) error {
 	if idValue == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Es necesario recibir el id para eliminar el registro",
@@ -41,12 +55,15 @@ func DeleteRecord(c *fiber.Ctx, tableName string, idColumn string, idValue strin
 	// Definimos la consulta
 	query := fmt.Sprintf("DELETE FROM %s WHERE %s = ?", tableName, idColumn)
 	dbCon = dbCon.Exec(query, idValue)
-
 	if dbCon.Error != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": dbCon.Error,
 		})
 	}
-
-	return c.Status(fiber.StatusOK).JSON(dest)
+	if dbCon.RowsAffected > 0 {
+		return c.Status(fiber.StatusOK).JSON(dest)
+	}
+	return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+		"record not deleted": idValue,
+	})
 }

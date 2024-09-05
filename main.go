@@ -4,6 +4,7 @@ import (
 	routersChallenges "techinical/challenges/infrastructura"
 	"techinical/config"
 	"techinical/db"
+	"techinical/sentences"
 	sharedRepo "techinical/shared/repository"
 	routersUsers "techinical/users/infrastructura"
 	routersVideos "techinical/video/infrastructura"
@@ -25,10 +26,12 @@ func main() {
 
 	log.Info().Msg("Inicializando apis...")
 	chatGptApi := sharedRepo.NewChatGptApi(config.KeyOpenIa)
+	sentencesRepo := sentences.NewSentences()
+
 	// Definimos un grupo, con cada sub-contexto
-	routersUsers.SetupRoutes(apiBase, chatGptApi)
-	routersChallenges.SetupRoutes(apiBase, chatGptApi)
-	routersVideos.SetupRoutes(apiBase, chatGptApi)
+	routersUsers.SetupRoutes(apiBase, chatGptApi, sentencesRepo)
+	routersChallenges.SetupRoutes(apiBase, chatGptApi, sentencesRepo)
+	routersVideos.SetupRoutes(apiBase, chatGptApi, sentencesRepo)
 
 	app.Listen(":" + config.PortService)
 }

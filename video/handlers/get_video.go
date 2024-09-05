@@ -2,21 +2,25 @@ package handlers
 
 import (
 	"techinical/db"
-	"techinical/sentencias"
+	"techinical/sentences"
 	"techinical/video/infrastructura/dto"
 
 	"github.com/gofiber/fiber/v2"
 )
 
 type HandlerGet struct {
+	sentences sentences.Sentences
 }
 
-func NewHandlerGetVideo() HandlerGet {
-	return HandlerGet{}
+func NewHandlerGetVideo(sentences sentences.Sentences) HandlerGet {
+	if sentences == nil {
+		panic("El repositorio de sentences es nil")
+	}
+	return HandlerGet{sentences: sentences}
 }
 
 func (h *HandlerGet) GetVideo(c *fiber.Ctx) error {
-	query, err := sentencias.PaginateAndQuery(c, "video")
+	query, err := h.sentences.PaginateAndQuery(c, "video")
 	if err != nil {
 		return err
 	}
