@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"techinical/db"
 	sharedRepo "techinical/shared/repository"
 	"techinical/video/infrastructura/dto"
@@ -22,33 +22,49 @@ func NewHandlerPatchVideo(chatGptApi sharedRepo.ChatGptApi) HandlerPatch {
 }
 
 func (h *HandlerPatch) PatchVideo(c *fiber.Ctx) error {
-	// Obtenemos los datos del body
 	video := dto.Video{}
 	if err := c.BodyParser(&video); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": err,
-		})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
-	result, err := h.ChatGptApi.ChatGptMessague(context.Background(), "Generame un chiste")
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": err,
-		})
+	if err := h.validateAndFillVideoFields(&video); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
-	fmt.Println("Chatgpt", result)
-	// Asiganos un uuid si no llega un valor
+	if err := h.updateVideo(&video); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(video)
+}
+
+func (h *HandlerPatch) validateAndFillVideoFields(video *dto.Video) error {
 	if video.Id_Video == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Es necesario recibir el id para actualizar al usuario",
-		})
+		return errors.New("es necesario recibir el id del video")
 	}
+
+	if video.Name_Video == "" {
+		name, err := h.ChatGptApi.ChatGptMessague(context.Background(), "Generame un nombre corto al azar")
+		if err != nil {
+			return err
+		}
+		video.Name_Video = "Modificado: " + name
+	}
+	if video.Url_Video == "" {
+		url, err := h.ChatGptApi.ChatGptMessague(context.Background(), "Generame solo una url de ejemplo corta")
+		if err != nil {
+			return err
+		}
+		video.Url_Video = url
+	}
+	return nil
+}
+
+func (h *HandlerPatch) updateVideo(video *dto.Video) (err error) {
 	dbCon := db.ConectionDb()
-	// Definimos la consulta
-	dbCon.Exec(`UPDATE video SET id_user = ?, name_video = ?,  url_video = ? WHERE id_video = ?`, video.Id_User, video.Name_Video, video.Url_Video, video.Id_Video)
+	dbCon = dbCon.Exec(`UPDATE video SET id_user = ?, name_video = ?, url_video = ? WHERE id_video = ?`,
+		video.Id_User, video.Name_Video, video.Url_Video, video.Id_Video)
+
 	if dbCon.Error != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": dbCon.Error,
-		})
+		return dbCon.Error
 	}
-	return c.Status(fiber.StatusCreated).JSON(video)
+	return
 }

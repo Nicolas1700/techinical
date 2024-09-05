@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"context"
-	"fmt"
+	"strconv"
 	"techinical/db"
 	sharedRepo "techinical/shared/repository"
 	"techinical/users/infrastructura/dto"
@@ -22,33 +22,51 @@ func NewHandlerPatchUser(chatGptApi sharedRepo.ChatGptApi) HandlerPatch {
 }
 
 func (h *HandlerPatch) PatchUser(c *fiber.Ctx) error {
-	// Obtenemos los datos del body
 	user := dto.User{}
 	if err := c.BodyParser(&user); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": err,
-		})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
-	result, err := h.ChatGptApi.ChatGptMessague(context.Background(), "Generame un chiste")
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": err,
-		})
-	}
-	fmt.Println("Chatgpt", result)
-	// Asiganos un uuid si no llega un valor
 	if user.Id_User == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Es necesario recibir el id para actualizar al usuario",
-		})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Debe ingresar el id de un usuario"})
 	}
+	// Completamos los campos faltantes usando IA
+	if err := h.completeUserFields(&user); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+	}
+	if err := h.updateUser(&user); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.Status(fiber.StatusOK).JSON(user)
+}
+
+func (h *HandlerPatch) completeUserFields(user *dto.User) error {
+	if user.Name_User == "" {
+		name, err := h.ChatGptApi.ChatGptMessague(context.Background(), "generame un nombre corto alazar")
+		if err != nil {
+			return err
+		}
+		user.Name_User = "Modificado: " + name
+	}
+	if user.Cell_Phone == 0 {
+		output, err := h.ChatGptApi.ChatGptMessague(context.Background(), "Genera unicamente un numero al azar de 10 dígitos")
+		if err != nil {
+			return err
+		}
+
+		cellPhone, err := strconv.Atoi(output)
+		if err != nil {
+			return err
+		}
+		user.Cell_Phone = cellPhone
+	}
+	return nil
+}
+
+func (h *HandlerPatch) updateUser(user *dto.User) (err error) {
 	dbCon := db.ConectionDb()
-	// Definimos la consulta
-	dbCon.Exec(`UPDATE users SET name_user = ?, cell_phone = ? WHERE id_user = ?`, user.Name_User, user.Cell_Phone, user.Id_User)
+	dbCon = dbCon.Exec(`UPDATE users SET name_user = ?, cell_phone = ? WHERE id_user = ?`, user.Name_User, user.Cell_Phone, user.Id_User)
 	if dbCon.Error != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": dbCon.Error,
-		})
+		return dbCon.Error
 	}
-	return c.Status(fiber.StatusCreated).JSON(user)
+	return
 }

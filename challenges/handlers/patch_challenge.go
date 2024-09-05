@@ -2,7 +2,8 @@ package handlers
 
 import (
 	"context"
-	"fmt"
+	"errors"
+	"strconv"
 	"techinical/challenges/infrastructura/dto"
 	"techinical/db"
 	sharedRepo "techinical/shared/repository"
@@ -22,33 +23,53 @@ func NewHandlerPatchChallenge(chatGptApi sharedRepo.ChatGptApi) HandlerPatch {
 }
 
 func (h *HandlerPatch) PatchChallenge(c *fiber.Ctx) error {
-	// Obtenemos los datos del body
 	challenge := dto.Challenge{}
 	if err := c.BodyParser(&challenge); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": err,
-		})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
-	result, err := h.ChatGptApi.ChatGptMessague(context.Background(), "Generame un chiste")
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": err,
-		})
+	if err := h.validateAndFillChallengeFields(&challenge); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
 	}
-	fmt.Println("Chatgpt", result)
-	// Asiganos un uuid si no llega un valor
+	if err := h.updateChallenge(&challenge); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	return c.Status(fiber.StatusOK).JSON(challenge)
+}
+
+func (h *HandlerPatch) validateAndFillChallengeFields(challenge *dto.Challenge) error {
 	if challenge.Id_Challenge == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Es necesario recibir el id para actualizar al usuario",
-		})
+		return errors.New("es necesario recibir el ID del desafío para actualizarlo")
 	}
+
+	if challenge.Number_Participants == 0 {
+		output, err := h.ChatGptApi.ChatGptMessague(context.Background(), "Genera unicamente un numero entre 1 y 100")
+		if err != nil {
+			return err
+		}
+		num, err := strconv.Atoi(output)
+		if err != nil {
+			return err
+		}
+		challenge.Number_Participants = num
+	}
+	if challenge.Name_Challenge == "" {
+		name, err := h.ChatGptApi.ChatGptMessague(context.Background(), "Generame un nombre que no pase de 50 caracteres")
+		if err != nil {
+			return err
+		}
+		challenge.Name_Challenge = name
+	}
+	return nil
+}
+
+func (h *HandlerPatch) updateChallenge(challenge *dto.Challenge) (err error) {
 	dbCon := db.ConectionDb()
-	// Definimos la consulta
-	dbCon.Exec(`UPDATE challenges SET id_video = ?, name_challenge = ?,  number_participants = ? WHERE id_challenge = ?`, challenge.Id_Video, challenge.Name_Challenge, challenge.Number_Participants, challenge.Id_Challenge)
+	dbCon = dbCon.Exec(
+		`UPDATE challenges SET id_video = ?, name_challenge = ?, number_participants = ? WHERE id_challenge = ?`,
+		challenge.Id_Video, challenge.Name_Challenge, challenge.Number_Participants, challenge.Id_Challenge,
+	)
 	if dbCon.Error != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": dbCon.Error,
-		})
+		return dbCon.Error
 	}
-	return c.Status(fiber.StatusCreated).JSON(challenge)
+	return
 }
