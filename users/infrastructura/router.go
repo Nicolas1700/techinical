@@ -9,15 +9,16 @@ import (
 	sharedRepo "techinical/shared/repository"
 )
 
-func SetupRoutes(apiBase fiber.Router, chatGptApi sharedRepo.ChatGptApi, sentences sentences.Sentences) {
+func SetupRoutes(route fiber.Router, chatGptApi sharedRepo.ChatGptApi, sentences sentences.Sentences) {
 
 	handlerGet := handlers.NewHandlerGetUser(sentences)
 	handlerPost := handlers.NewHandlerPostUser(chatGptApi)
 	handlerPatch := handlers.NewHandlerPatchUser(chatGptApi)
 	handlerDelete := handlers.NewHandlerDeleteUser(sentences)
 
-	apiBase.Get("/users", handlerGet.GetUser)
-	apiBase.Post("/users", handlerPost.PostUser)
-	apiBase.Patch("/users", handlerPatch.PatchUser)
-	apiBase.Delete("/users", handlerDelete.DeleteUser)
+	route = route.Group("/users")
+	route.Get("", handlerGet.GetUser)
+	route.Post("", handlerPost.PostUser)
+	route.Patch("", handlerPatch.PatchUser)
+	route.Delete("", handlerDelete.DeleteUser)
 }
