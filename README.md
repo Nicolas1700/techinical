@@ -1,6 +1,6 @@
-# technical
+# Technical
 
-Prueba tecnica Talent pitch
+Prueba de Talento
 
 # Configuración de Variables de Entorno
 
